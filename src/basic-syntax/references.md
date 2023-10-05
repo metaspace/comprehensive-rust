@@ -17,6 +17,7 @@ Some notes:
 * We must dereference `ref_x` when assigning to it, similar to C and C++ pointers.
 * Rust will auto-dereference in some cases, in particular when invoking
   methods (try `ref_x.count_ones()`).
+  * This is called _deref coersion_.
 * References that are declared as `mut` can be bound to different values over their lifetime.
 
 <details>
