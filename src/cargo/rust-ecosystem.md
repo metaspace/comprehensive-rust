@@ -16,6 +16,19 @@ The Rust ecosystem consists of a number of tools, of which the main ones are:
   library. You can have multiple versions of Rust installed at once and `rustup`
   will let you switch between them as needed.
 
+* `rustfmt`: the Rust formatter. Useful for formatting Rust code in your editor.
+  Some people like to enable "format on save". Install with `rustup`:
+  ```shell
+  rustup component add rustfmt
+  ```
+
+* `rust-analzyer`: the Rust LSP daemon. Useful for editor support. For VS Code,
+  install the `rust-analyzer`extension from the marketplace. For other editors
+  install the binary via your distribution package manager, or get a prebuilt
+  binary [here](https://github.com/rust-analyzer/rust-analyzer/releases).
+  `rust-analyzer` is also available via `rustup` but that version is not updated
+  as often as the releases on github.
+
 <details>
 
 Key points:
