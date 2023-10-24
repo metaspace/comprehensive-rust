@@ -13,6 +13,7 @@ The `crate` root is in:
 
 * `src/lib.rs` (for a library crate)
 * `src/main.rs` (for a binary crate)
+* `src/bin/<name>.rs` (for additional binaries)
 
 Modules defined in files can be documented, too, using "inner doc comments".
 These document the item that contains them -- in this case, a module.
