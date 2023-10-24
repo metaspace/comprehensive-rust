@@ -31,9 +31,9 @@ pub fn prefix_matches(prefix: &str, request_path: &str) -> bool {
 
     // Alternatively, Iterator::zip() lets us iterate simultaneously over prefix
     // and request segments. The zip() iterator is finished as soon as one of
-    // the source iterators is finished, but we need to iterate over all request
+    // the source iterators is finished, but we need to iterate over all pattern
     // segments. A neat trick that makes zip() work is to use map() and chain()
-    // to produce an iterator that returns Some(str) for each pattern segments,
+    // to produce an iterator that returns Some(str) for each request segment,
     // and then returns None indefinitely.
 }
 
