@@ -161,6 +161,7 @@
 - [Error Handling](error-handling.md)
   - [Panics](error-handling/panics.md)
     - [Catching Stack Unwinding](error-handling/panic-unwind.md)
+    - [Drop During Stack Unwinding](error-handling/panic-drop.md)
   - [Structured Error Handling](error-handling/result.md)
   - [Propagating Errors with ?](error-handling/try-operator.md)
     - [Converting Error Types](error-handling/converting-error-types.md)
