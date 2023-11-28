@@ -11,6 +11,17 @@ How does Rust know to forbid shared access across threads? The answer is in two 
 as long as they only contain `Send` and `Sync` types. You can also implement them manually when you
 know it is valid.
 
+Here is another way to look at `Send` and `Sync`. There are three relevant
+permissions:
+
+ * Access value mutably from threads other than the one it was created on, with
+   synchronization. (Send gives this.)
+ * Access value immutably from threads other than the one it was created on,
+   with synchronization. (Send and Sync both gives this - you only need one of
+   them to have it.)
+ * Access value immutably from threads other than the one it was created on,
+   without synchronization. (Sync gives this.)
+
 [1]: https://doc.rust-lang.org/std/marker/trait.Send.html
 [2]: https://doc.rust-lang.org/std/marker/trait.Sync.html
 [3]: ../unsafe/unsafe-traits.md
