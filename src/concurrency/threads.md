@@ -42,4 +42,8 @@ Key points:
 
 [`Any`]: https://doc.rust-lang.org/std/any/index.html
 
+* It is theoretically possible to have a hash collision in `TypeId`. `TypeId` is
+  currently a 128 bit wide hash. See
+  [this](https://github.com/rust-lang/rust/issues/10389) issue for reference.
+
 </details>
