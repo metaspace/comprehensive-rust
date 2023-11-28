@@ -1,112 +1,143 @@
 # Pin
 
-When you await a future, all local variables (that would ordinarily be stored on
-a stack frame) are instead stored in the Future for the current async block. If your
-future has pointers to data on the stack, those pointers might get invalidated.
-This is unsafe.
+Links
+ - [Pin](https://doc.rust-lang.org/core/pin/struct.Pin.html)
+ - [Future](https://doc.rust-lang.org/core/future/trait.Future.html)
+ - [Stack Overflow](https://stackoverflow.com/a/73178712) answer that inspired this section
 
-Therefore, you must guarantee that the addresses your future points to don't
-change. That is why we need to `pin` futures. Using the same future repeatedly
-in a `select!` often leads to issues with pinned values.
+## What is pinning?
+
+From the docs:
+
+>\[`Pin<P>`\] is a wrapper around a kind of pointer which makes that pointer “pin” its value in place, preventing the value referenced by that pointer from being moved unless it implements Unpin.
+
+```rust,ignore
+impl<P: Deref<Target: Unpin>> Pin<P> {
+  pub fn into_inner(pin: Pin<P>) -> P {..}
+}
+```
+
+```rust,ignore
+pub fn get_mut(self) -> &'a mut T
+where
+    T: Unpin,
+```
+
+In safe code, pinned pointers provide address stability for `!Unpin` types.
+
+## Why do we sometimes need to pin futures?
+
+Futures may be self referential, and the `Future::poll()` function requires the `self` argument to be pinned:
+
+```rust,ignore
+pub trait Future {
+    type Output;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
+}
+```
+
+By the Pin API contract, `self` cannot move after poll has been called if `Self` is `!Unpin`. If we await a future by value, the future is consumed and the contract is upheld:
+
+```rust,editable
+pub async fn foo() {
+    let fut = async {};
+    fut.await;
+    //drop(fut); // error[E0382]: use of moved value: `fut`
+}
+```
+
+But if were to await the future by reference, we could violate the contract. The following code will _not_ compile:
+
+```rust,compile_fail
+pub async fn foo() {
+    let fut = async {};
+    let fut2 = async {};
+    (&mut fut).await;
+    std::mem::swap(&mut fut, &mut fut2);
+    (&mut fut).await;
+}
+```
+
+To achieve this, `&mut Future` is not a future unless the referee is `Unpin`:
+
+```rust,ignore
+impl<F> Future for &mut F
+where
+    F: Future + Unpin + ?Sized,
+```
+
+The following example illustrates how futures returned by `async` blocks are `!Unpin`:
 
 ```rust,editable,compile_fail
-use tokio::sync::{mpsc, oneshot};
-use tokio::task::spawn;
-use tokio::time::{sleep, Duration};
-
-// A work item. In this case, just sleep for the given time and respond
-// with a message on the `respond_on` channel.
-#[derive(Debug)]
-struct Work {
-    input: u32,
-    respond_on: oneshot::Sender<u32>,
-}
-
-// A worker which listens for work on a queue and performs it.
-async fn worker(mut work_queue: mpsc::Receiver<Work>) {
-    let mut iterations = 0;
-    loop {
-        tokio::select! {
-            Some(work) = work_queue.recv() => {
-                sleep(Duration::from_millis(10)).await; // Pretend to work.
-                work.respond_on
-                    .send(work.input * 1000)
-                    .expect("failed to send response");
-                iterations += 1;
-            }
-            // TODO: report number of iterations every 100ms
-        }
-    }
-}
-
-// A requester which requests work and waits for it to complete.
-async fn do_work(work_queue: &mpsc::Sender<Work>, input: u32) -> u32 {
-    let (tx, rx) = oneshot::channel();
-    work_queue
-        .send(Work {
-            input,
-            respond_on: tx,
-        })
-        .await
-        .expect("failed to send on work queue");
-    rx.await.expect("failed waiting for response")
-}
-
 #[tokio::main]
 async fn main() {
-    let (tx, rx) = mpsc::channel(10);
-    spawn(worker(rx));
-    for i in 0..100 {
-        let resp = do_work(&tx, i).await;
-        println!("work result for iteration {i}: {resp}");
+    let mut f1 = core::future::pending();
+    let f2 = async {};
+    //tokio::pin!(f2);
+
+    loop {
+        tokio::select! {
+            _ = &mut f1 => { println!("f1"); }
+            _ = &mut f2 => { println!("f2"); }
+        }
     }
 }
 ```
 
-<details>
+Uncomment line 5 to make the example compile. Notice how `core::future::pending()` is `Unpin` and does not require pinning.
 
-* You may recognize this as an example of the actor pattern. Actors
-  typically call `select!` in a loop.
+Notice that if we only wanted to `await` `f2` once, we could do so without taking a reference to the future:
 
-* This serves as a summation of a few of the previous lessons, so take your time
-  with it.
+```rust,ignore,editable
+#[tokio::main]
+async fn main() {
+    let mut f1 = core::future::pending();
+    let f2 = async {};
 
-    * Naively add a `_ = sleep(Duration::from_millis(100)) => { println!(..) }`
-      to the `select!`. This will never execute. Why?
+    tokio::select! {
+        _ = &mut f1 => { println!("f1"); }
+        _ = f2 => { println!("f2"); }
+    }
+}
+```
 
-    * Instead, add a `timeout_fut` containing that future outside of the `loop`:
+## Why are `async` blocks `!Unpin`?
 
-        ```rust,compile_fail
-        let mut timeout_fut = sleep(Duration::from_millis(100));
-        loop {
-            select! {
-                ..,
-                _ = timeout_fut => { println!(..); },
-            }
-        }
-        ```
-    * This still doesn't work. Follow the compiler errors, adding `&mut` to the
-      `timeout_fut` in the `select!` to work around the move, then using
-      `Box::pin`:
+From the [async-book](https://github.com/rust-lang/async-book/blob/ed022fc51a1c45e08be12bab65bc1cfd39d32a0d/src/04_pinning/01_chapter.md?plain=1#L70):
 
-        ```rust,compile_fail
-        let mut timeout_fut = Box::pin(sleep(Duration::from_millis(100)));
-        loop {
-            select! {
-                ..,
-                _ = &mut timeout_fut => { println!(..); },
-            }
-        }
-        ```
+> However, what happens if we have an `async` block that uses references?
+> For example:
+> 
+> ```rust,edition2018,ignore
+> async {
+>     let mut x = [0; 128];
+>     let read_into_buf_fut = read_into_buf(&mut x);
+>     read_into_buf_fut.await;
+>     println!("{:?}", x);
+> }
+> ```
+> 
+> What struct does this compile down to?
+> 
+> ```rust,ignore
+> struct ReadIntoBuf<'a> {
+>     buf: &'a mut [u8], // points to `x` below
+> }
+> 
+> struct AsyncFuture {
+>     x: [u8; 128],
+>     read_into_buf_fut: ReadIntoBuf<'what_lifetime?>,
+> }
+> ```
+> 
+> Here, the `ReadIntoBuf` future holds a reference into the other field of our
+> structure, `x`. However, if `AsyncFuture` is moved, the location of `x` will
+> move as well, invalidating the pointer stored in `read_into_buf_fut.buf`.
+> 
+> Pinning futures to a particular spot in memory prevents this problem, making
+> it safe to create references to values inside an `async` block.
 
-    * This compiles, but once the timeout expires it is `Poll::Ready` on every
-      iteration (a fused future would help with this). Update to reset
-      `timeout_fut` every time it expires.
-
-* Box allocates on the heap. In some cases, `std::pin::pin!` (only recently
-  stabilized, with older code often using `tokio::pin!`) is also an option, but
-  that is difficult to use for a future that is reassigned.
-
-* Another alternative is to not use `pin` at all but spawn another task that will send to a `oneshot` channel every 100ms.
-
-</details>
+Hand written futures may be `!Unpin` because they are self referential as well,
+because they are part of intrusive lists, or for any other reason that requires
+address stability of the future across successive calls to poll.

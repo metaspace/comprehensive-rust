@@ -297,6 +297,7 @@
 - [Control Flow](async/control-flow.md)
   - [Join](async/control-flow/join.md)
   - [Select](async/control-flow/select.md)
+- [Deep Dive](async/deep-dive.md)
 - [Pitfalls](async/pitfalls.md)
   - [Blocking the Executor](async/pitfalls/blocking-executor.md)
   - [Pin](async/pitfalls/pin.md)
