@@ -308,6 +308,24 @@
   - [Broadcast Chat Application](exercises/concurrency/chat-app.md)
 
 
+# FFI
+
+----
+
+- [Welcome](ffi.md)
+- [Linking](ffi/linking.md)
+- [`bindgen`](ffi/bindgen.md)
+- [Safe APIs](ffi/safe-api.md)
+  - [Safe APIs II](ffi/safe-api-2.md)
+- [Callbacks](ffi/callbacks.md)
+  - [Callbacks II](ffi/callbacks-2.md)
+- [References and Pointers](ffi/ref-ptr-1.md)
+  - [Pointer from Shared Reference](ffi/ref-ptr-2.md)
+  - [Reference from Pointer](ffi/ref-ptr-3.md)
+  - [Example](ffi/ref-ptr-4.md)
+- [Synchronization](ffi/sync.md)
+- [Exercise](ffi/exercise.md)
+
 # Final Words
 
 ----

@@ -1,0 +1,16 @@
+[package]
+name = "snappy"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[workspace]
+
+[dependencies]
+libc = "0.2"
+
+[build-dependencies]
+bindgen = "0.63.0"
+pkg-config = "0.3.31"
+tap = "1"
